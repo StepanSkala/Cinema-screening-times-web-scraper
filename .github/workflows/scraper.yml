@@ -1,0 +1,40 @@
+name: Cinema Scraper
+
+on:
+  schedule:
+    # Spouští se každých 30 minut (ušetří minuty zdarma, pokud je repo private)
+    - cron: '*/30 * * * *'
+  workflow_dispatch: # Umožní ti spustit skript v GitHubu i ručně tlačítkem
+
+permissions:
+  contents: write # Důležité: dovolí botovi uložit soubor previous_times.json
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repozitáře
+        uses: actions/checkout@v4
+
+      - name: Instalace Pythonu
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalace knihoven
+        run: pip install requests
+
+      - name: Spuštění skriptu
+        env:
+          SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
+          SENDER_PASSWORD: ${{ secrets.SENDER_PASSWORD }}
+          RECEIVER_EMAIL: ${{ secrets.RECEIVER_EMAIL }}
+        run: python scraper.py
+
+      - name: Uložení nového stavu (pokud se změnil)
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add previous_times.json
+          git diff --quiet && git diff --staged --quiet || git commit -m "Aktualizace historie časů"
+          git push
